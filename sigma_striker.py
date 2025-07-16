@@ -31,7 +31,7 @@ SOCIALS = {
     "📺 YouTube ": "https://www.youtube.com/@sigma_ghost_hacking"
 }
 
-SUPPORTED = [".rar", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".zst", ".001", ".lz", ".cab", ".jar", ".arj", ".uue", ".zipx"]
+SUPPORTED = [".rar", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".zst", ".001", ".lz", ".cab", ".jar", ".arj", ".uue", ".zipx", ".pdf"]
 
 def animate(text, delay=0.01):
     for char in text:
@@ -50,7 +50,7 @@ def loading_spinner(text, duration=2):
     print()
 
 def display_banner():
-    os.system('clear')
+    os.system('clear' if os.name != 'nt' else 'cls')
     print(BANNER_ART)
     cprint("SIGMA STRIKER — STREAM-FORCE BLACK HAT HACKER EDITION", "red", attrs=["bold"])
     cprint("="*60, "cyan")
@@ -61,7 +61,7 @@ def display_banner():
 def ask_file():
     root = Tk()
     root.withdraw()
-    messagebox.showinfo("SIGMA STRIKER", "Select archive file to crack")
+    messagebox.showinfo("SIGMA STRIKER", "Select file to crack (archive or PDF)")
     return filedialog.askopenfilename()
 
 def ask_mode():
@@ -111,19 +111,22 @@ def try_passwords(file_path, generate=False, charset=None, min_len=0, max_len=0,
         return
 
     output_dir = create_output_dir(file_path)
-    base_cmd = f'unrar x -y -pPASSWORD "{file_path}" "{output_dir}/"' if ".rar" in ext \
-        else f'7z x -y -o"{output_dir}" -pPASSWORD "{file_path}"'
+    is_pdf = ext.endswith(".pdf")
 
     def try_pass(pwd):
-        cmd = base_cmd.replace("PASSWORD", pwd)
-        result = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if is_pdf:
+            result = subprocess.run(f'qpdf --password="{pwd}" --decrypt "{file_path}" "{output_dir}/decrypted.pdf"', shell=True,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            base_cmd = f'unrar x -y -p"{pwd}" "{file_path}" "{output_dir}/"' if ".rar" in ext \
+                else f'7z x -y -o"{output_dir}" -p"{pwd}" "{file_path}"'
+            result = subprocess.run(base_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return result.returncode == 0
 
     cprint(f"[+] Target: {file_path}", "green")
     loading_spinner("Brute engine engaged")
 
     if generate:
-        import itertools
         for length in range(min_len, max_len + 1):
             for pwd_tuple in itertools.product(charset, repeat=length):
                 pwd = ''.join(pwd_tuple)
