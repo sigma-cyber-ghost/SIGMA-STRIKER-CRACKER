@@ -16,7 +16,7 @@ SIGMA STRIKER is a powerful Python-based archive password cracking tool designed
 - 🖥️ Cross-platform compatibility
 
 # Supported Formats
-[".rar", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".zst", ".001", ".lz", ".cab", ".jar", ".arj", ".uue", ".zipx"]
+[".rar", ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso", ".zst", ".001", ".lz", ".cab", ".jar", ".arj", ".uue", ".zipx" ,".PDF"]
 
 ## Usage
 
