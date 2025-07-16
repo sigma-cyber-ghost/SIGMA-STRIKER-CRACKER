@@ -6,6 +6,8 @@ from pathlib import Path
 from tkinter import Tk, filedialog, messagebox, simpledialog
 from termcolor import cprint, colored
 from colorama import init
+import pikepdf
+from tqdm import tqdm
 
 init()
 
@@ -59,19 +61,16 @@ def display_banner():
     cprint("="*60, "cyan")
 
 def ask_file():
-    root = Tk()
-    root.withdraw()
-    messagebox.showinfo("SIGMA STRIKER", "Select file to crack (archive or PDF)")
+    root = Tk(); root.withdraw()
+    messagebox.showinfo("SIGMA STRIKER", "Select archive file to crack")
     return filedialog.askopenfilename()
 
 def ask_mode():
-    root = Tk()
-    root.withdraw()
+    root = Tk(); root.withdraw()
     return messagebox.askquestion("MODE", "Generate passwords on the fly?") == "yes"
 
 def ask_charset():
-    root = Tk()
-    root.withdraw()
+    root = Tk(); root.withdraw()
     options = {
         "1": "0123456789",
         "2": "abcdefghijklmnopqrstuvwxyz",
@@ -83,15 +82,13 @@ def ask_charset():
     return options.get(choice, options["5"])
 
 def ask_length_range():
-    root = Tk()
-    root.withdraw()
+    root = Tk(); root.withdraw()
     min_len = simpledialog.askinteger("Length", "Minimum password length:")
     max_len = simpledialog.askinteger("Length", "Maximum password length:")
     return min_len, max_len
 
 def ask_wordlist():
-    root = Tk()
-    root.withdraw()
+    root = Tk(); root.withdraw()
     messagebox.showinfo("SIGMA STRIKER", "Select your custom wordlist")
     return filedialog.askopenfilename()
 
@@ -110,32 +107,38 @@ def try_passwords(file_path, generate=False, charset=None, min_len=0, max_len=0,
         cprint(f"[X] Unsupported file type: {ext}", "red")
         return
 
-    output_dir = create_output_dir(file_path)
-    is_pdf = ext.endswith(".pdf")
+    is_pdf = ".pdf" in ext
+    output_dir = create_output_dir(file_path) if not is_pdf else None
+
+    base_cmd = f'unrar x -y -pPASSWORD "{file_path}" "{output_dir}/"' if ".rar" in ext \
+        else f'7z x -y -o"{output_dir}" -pPASSWORD "{file_path}"'
 
     def try_pass(pwd):
         if is_pdf:
-            result = subprocess.run(f'qpdf --password="{pwd}" --decrypt "{file_path}" "{output_dir}/decrypted.pdf"', shell=True,
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                with pikepdf.open(file_path, password=pwd) as pdf:
+                    pdf.save(f'unlocked_{Path(file_path).name}')
+                return True
+            except pikepdf.PasswordError:
+                return False
         else:
-            base_cmd = f'unrar x -y -p"{pwd}" "{file_path}" "{output_dir}/"' if ".rar" in ext \
-                else f'7z x -y -o"{output_dir}" -p"{pwd}" "{file_path}"'
-            result = subprocess.run(base_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return result.returncode == 0
+            cmd = base_cmd.replace("PASSWORD", pwd)
+            result = subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return result.returncode == 0
 
     cprint(f"[+] Target: {file_path}", "green")
     loading_spinner("Brute engine engaged")
 
     if generate:
         for length in range(min_len, max_len + 1):
-            for pwd_tuple in itertools.product(charset, repeat=length):
+            for pwd_tuple in tqdm(itertools.product(charset, repeat=length), desc=f"Len {length}"):
                 pwd = ''.join(pwd_tuple)
                 print(colored(f"[-] Trying: {pwd}", "blue"))
                 if try_pass(pwd):
                     cprint(f"[✓] Cracked: {pwd}", "green", attrs=["bold"])
                     with open("/tmp/sigma_vault.txt", "a") as vault:
                         vault.write(f"{file_path} => {pwd}\n")
-                    cprint(f"[✓] Extracted to: {output_dir}/", "cyan")
+                    cprint(f"[✓] {'PDF Unlocked' if is_pdf else f'Extracted to: {output_dir}/'}", "cyan")
                     return
         cprint("[!] No match found in generated stream.", "red")
     else:
@@ -149,7 +152,7 @@ def try_passwords(file_path, generate=False, charset=None, min_len=0, max_len=0,
                     cprint(f"[✓] Cracked: {pwd}", "green", attrs=["bold"])
                     with open("/tmp/sigma_vault.txt", "a") as vault:
                         vault.write(f"{file_path} => {pwd}\n")
-                    cprint(f"[✓] Extracted to: {output_dir}/", "cyan")
+                    cprint(f"[✓] {'PDF Unlocked' if is_pdf else f'Extracted to: {output_dir}/'}", "cyan")
                     return
         cprint("[!] Password not found in wordlist.", "red")
 
