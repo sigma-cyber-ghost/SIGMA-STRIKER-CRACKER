@@ -24,7 +24,7 @@ git clone https://github.com/sigma-cyber-ghost/SIGMA-STRIKER-CRACKER.git
 
 cd SIGMA-STRIKER-CRACKER
 
-sudo apt update && sudo apt install -y python3-tk p7zip-full unrar python3-pip && pip3 install pyfiglet termcolor colorama qpdf
+sudo apt update && sudo apt install -y python3-tk p7zip-full unrar python3-pip && pip3 install pyfiglet termcolor colorama qpdf pikepdf tqdm
 
 python3 sigma_striker.py
 
